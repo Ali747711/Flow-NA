@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logistics Flowchart Builder</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="node-options">
+                <div class="node-option" data-node-type="supplier">
+                    <i class="fas fa-truck"></i> Supplier
+                </div>
+                <div class="node-option" data-node-type="warehouse">
+                    <i class="fas fa-warehouse"></i> Warehouse
+                </div>
+                <div class="node-option" data-node-type="distribution">
+                    <i class="fas fa-shipping-fast"></i> Distribution
+                </div>
+                <div class="node-option" data-node-type="retail">
+                    <i class="fas fa-store"></i> Retail
+                </div>
+                <div class="node-option" data-node-type="transport">
+                    <i class="fas fa-route"></i> Transport
+                </div>
+            </div>
+        </div>
+        <div class="flowchart-area">
+            <div id="flowchart"></div>
+        </div>
+        <div class="controls">
+            <button id="save-png">Save as PNG</button>
+            <button id="save-pdf">Save as PDF</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
