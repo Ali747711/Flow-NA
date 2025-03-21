@@ -202,6 +202,28 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #d32f3a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
         .flowchart-area {
             flex: 1;
             position: relative;
@@ -228,7 +250,7 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             user-select: none;
             transition: box-shadow 0.3s ease;
-            overflow: hidden;
+            overflow: visible;
             z-index: 1;
         }
 
@@ -247,46 +269,65 @@
             width: 100%;
             border: none;
             outline: none;
-            font-size: 14px;
+            font-size: 16px;
             background: transparent;
+            font-weight: 500;
         }
 
         .node-actions {
             position: absolute;
-            top: 5px;
-            right: 5px;
+            top: -10px;
+            right: -10px;
             display: flex;
             gap: 5px;
-            opacity: 0;
-            transition: opacity 0.2s ease;
         }
 
-        .node:hover .node-actions {
-            opacity: 1;
+        .connector-button {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 2;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .connector-button:hover {
+            transform: scale(1.1);
+            background-color: var(--secondary);
+        }
+
+        .connector-right {
+            right: -12px;
+            top: 50%;
+            transform: translateY(-50%);
         }
 
         .node-btn {
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
             border: none;
             border-radius: 50%;
-            background-color: rgba(0, 0, 0, 0.1);
-            color: var(--dark);
+            background-color: var(--danger);
+            color: white;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             transition: all 0.2s ease;
         }
 
         .node-btn:hover {
-            background-color: rgba(0, 0, 0, 0.2);
-        }
-
-        .node-btn.delete:hover {
-            background-color: var(--danger);
-            color: white;
+            transform: scale(1.1);
         }
 
         .connector-line {
@@ -396,6 +437,12 @@
             100% { transform: rotate(360deg); }
         }
 
+        .history-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
         @media (max-width: 768px) {
             .flowchart-container {
                 flex-direction: column;
@@ -406,6 +453,7 @@
                 border-right: none;
                 border-bottom: 1px solid #e9ecef;
                 flex-direction: row;
+                flex-wrap: wrap;
                 justify-content: space-around;
             }
             
@@ -413,6 +461,12 @@
                 flex: 1;
                 text-align: center;
                 font-size: 0.9rem;
+                min-width: 100px;
+            }
+
+            .history-buttons {
+                flex-direction: row;
+                width: 100%;
             }
         }
     </style>
@@ -436,7 +490,9 @@
                 <li><strong>Add Nodes:</strong> Click the "Add Node" button to add a new node to your flowchart. Each node represents a step or process in your logistics workflow.</li>
                 <li><strong>Position Nodes:</strong> Drag and drop nodes to position them on the flowchart canvas. Arrange them in a logical sequence.</li>
                 <li><strong>Label Nodes:</strong> Double-click on any node to edit its label. Enter descriptive text that explains the process step.</li>
-                <li><strong>Connect Nodes:</strong> Click on a node and drag to another node to create a connection between them, showing the flow of your logistics process.</li>
+                <li><strong>Connect Nodes:</strong> Click on the connector button (right side of a node) and then click on another node to create a connection, showing the flow of your logistics process.</li>
+                <li><strong>Undo/Redo:</strong> Use the undo and redo buttons to reverse or restore your recent actions.</li>
+                <li><strong>Reset:</strong> Clear the canvas and start fresh with the reset button.</li>
                 <li><strong>Save Your Work:</strong> Use the "Save PNG" button to save your flowchart as an image file, or "Save PDF" for a document format that's easy to share.</li>
             </ol>
         </section>
@@ -453,6 +509,17 @@
                 <button id="savePdfBtn" class="btn btn-warning">
                     <span>📄</span> Save PDF
                 </button>
+                <div class="history-buttons">
+                    <button id="undoBtn" class="btn btn-secondary" disabled>
+                        <span>↩</span> Undo
+                    </button>
+                    <button id="redoBtn" class="btn btn-secondary" disabled>
+                        <span>↪</span> Redo
+                    </button>
+                    <button id="resetBtn" class="btn btn-danger">
+                        <span>🗑️</span> Reset
+                    </button>
+                </div>
             </div>
             <div id="flowchartArea" class="flowchart-area"></div>
         </section>
@@ -480,11 +547,43 @@
     </div>
 
     <script>
+        // Load required libraries
+        function loadExternalLibraries() {
+            return new Promise((resolve, reject) => {
+                // Load html2canvas
+                const html2canvasScript = document.createElement('script');
+                html2canvasScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                document.head.appendChild(html2canvasScript);
+                
+                // Load jsPDF
+                const jsPDFScript = document.createElement('script');
+                jsPDFScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                document.head.appendChild(jsPDFScript);
+                
+                // Check if libraries are loaded
+                const checkLibraries = setInterval(() => {
+                    if (window.html2canvas && window.jspdf) {
+                        clearInterval(checkLibraries);
+                        resolve();
+                    }
+                }, 100);
+                
+                // Set a timeout for library loading
+                setTimeout(() => {
+                    clearInterval(checkLibraries);
+                    reject('Failed to load libraries. Please refresh the page and try again.');
+                }, 10000);
+            });
+        }
+
         // DOM Elements
         const flowchartArea = document.getElementById('flowchartArea');
         const addNodeBtn = document.getElementById('addNodeBtn');
         const savePngBtn = document.getElementById('savePngBtn');
         const savePdfBtn = document.getElementById('savePdfBtn');
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        const resetBtn = document.getElementById('resetBtn');
         const labelModal = document.getElementById('labelModal');
         const nodeLabelInput = document.getElementById('nodeLabel');
         const saveLabelBtn = document.getElementById('saveLabelBtn');
@@ -499,25 +598,196 @@
         let selectedNode = null;
         let isDragging = false;
         let isConnecting = false;
-        let startNode = null;
+        let connectingNode = null;
         let currentConnection = null;
         let activeNodeId = null;
         let offset = { x: 0, y: 0 };
+        
+        // History for undo/redo
+        let history = [];
+        let historyIndex = -1;
+        let ignoreNextSave = false;
+
+        // Save current state to history
+        function saveToHistory() {
+            if (ignoreNextSave) {
+                ignoreNextSave = false;
+                return;
+            }
+            
+            // If we're not at the end of the history array, truncate it
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+            
+            // Create a deep copy of the current state
+            const state = {
+                nodes: JSON.parse(JSON.stringify(nodes.map(n => ({
+                    id: n.id,
+                    x: n.x,
+                    y: n.y,
+                    label: n.label
+                })))),
+                connections: JSON.parse(JSON.stringify(connections.map(c => ({
+                    startId: c.startId,
+                    endId: c.endId
+                }))))
+            };
+            
+            // Add to history
+            history.push(state);
+            historyIndex = history.length - 1;
+            
+            // Update button states
+            updateHistoryButtons();
+        }
+
+        // Update undo/redo button states
+        function updateHistoryButtons() {
+            undoBtn.disabled = historyIndex <= 0;
+            redoBtn.disabled = historyIndex >= history.length - 1;
+        }
+
+        // Undo function
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                restoreState(history[historyIndex]);
+                updateHistoryButtons();
+            }
+        }
+
+        // Redo function
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                restoreState(history[historyIndex]);
+                updateHistoryButtons();
+            }
+        }
+
+        // Reset function
+        function reset() {
+            // Clear all nodes and connections
+            clearFlowchart();
+            
+            // Add to history
+            saveToHistory();
+        }
+
+        // Clear the flowchart
+        function clearFlowchart() {
+            // Remove all node elements
+            nodes.forEach(node => {
+                const nodeElement = document.getElementById(node.id);
+                if (nodeElement) nodeElement.remove();
+            });
+            
+            // Remove all connection elements
+            connections.forEach(conn => {
+                if (conn.line) conn.line.remove();
+                if (conn.arrow) conn.arrow.remove();
+            });
+            
+            // Reset state
+            nodes = [];
+            connections = [];
+            selectedNode = null;
+            nodeCounter = 0;
+        }
+
+        // Restore state from history
+        function restoreState(state) {
+            ignoreNextSave = true;
+            
+            // Clear current flowchart
+            clearFlowchart();
+            
+            // Restore nodes
+            state.nodes.forEach(nodeData => {
+                const nodeId = nodeData.id;
+                const node = createNode(nodeId);
+                node.style.left = `${nodeData.x}px`;
+                node.style.top = `${nodeData.y}px`;
+                
+                const labelElement = node.querySelector('.node-label');
+                labelElement.textContent = nodeData.label || '';
+                
+                nodes.push({
+                    id: nodeId,
+                    element: node,
+                    x: nodeData.x,
+                    y: nodeData.y,
+                    label: nodeData.label || ''
+                });
+                
+                flowchartArea.appendChild(node);
+                
+                // Update node counter if needed
+                const nodeNumber = parseInt(nodeId.split('-')[1]);
+                if (nodeNumber >= nodeCounter) {
+                    nodeCounter = nodeNumber + 1;
+                }
+            });
+            
+            // Restore connections
+            state.connections.forEach(connData => {
+                const startNode = nodes.find(n => n.id === connData.startId);
+                const endNode = nodes.find(n => n.id === connData.endId);
+                
+                if (startNode && endNode) {
+                    // Create connection elements
+                    const line = document.createElement('div');
+                    line.className = 'connector-line';
+                    
+                    const arrow = document.createElement('div');
+                    arrow.className = 'connector-arrow';
+                    
+                    flowchartArea.appendChild(line);
+                    flowchartArea.appendChild(arrow);
+                    
+                    // Add to connections array
+                    const connection = {
+                        startId: connData.startId,
+                        endId: connData.endId,
+                        line: line,
+                        arrow: arrow
+                    };
+                    
+                    connections.push(connection);
+                    
+                    // Position the connection
+                    updateConnectionPosition(connection);
+                }
+            });
+        }
 
         // Add a new node to the flowchart
         addNodeBtn.addEventListener('click', () => {
             const nodeId = `node-${nodeCounter++}`;
             const node = createNode(nodeId);
+            
+            // Position node in the center of the visible area
+            const flowchartRect = flowchartArea.getBoundingClientRect();
+            const centerX = Math.max(0, (flowchartRect.width / 2) - 75);
+            const centerY = Math.max(0, (flowchartRect.height / 2) - 40);
+            
+            node.style.left = `${centerX}px`;
+            node.style.top = `${centerY}px`;
+            
             nodes.push({
                 id: nodeId,
                 element: node,
-                x: 50,
-                y: 50,
-                label: '',
-                connections: []
+                x: centerX,
+                y: centerY,
+                label: ''
             });
+            
             flowchartArea.appendChild(node);
             openLabelModal(nodeId);
+            
+            // Save state to history
+            saveToHistory();
         });
 
         // Create a node element
@@ -525,45 +795,145 @@
             const node = document.createElement('div');
             node.id = id;
             node.className = 'node';
-            node.style.left = '50px';
-            node.style.top = '50px';
             
+            // Node label
             const label = document.createElement('div');
             label.className = 'node-label';
             label.textContent = '';
             node.appendChild(label);
             
+            // Delete button
             const actions = document.createElement('div');
             actions.className = 'node-actions';
             
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'node-btn delete';
             deleteBtn.innerHTML = '×';
+            deleteBtn.title = "Delete node";
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 deleteNode(id);
             });
-            actions.appendChild(deleteBtn);
             
+            actions.appendChild(deleteBtn);
             node.appendChild(actions);
+            
+            // Connector button
+            const connectorBtn = document.createElement('div');
+            connectorBtn.className = 'connector-button connector-right';
+            connectorBtn.innerHTML = '→';
+            connectorBtn.title = "Connect to another node";
+            connectorBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                startConnecting(id);
+            });
+            
+            node.appendChild(connectorBtn);
             
             // Event listeners for node
             node.addEventListener('mousedown', (e) => {
-                if (e.target.className.includes('node-btn')) return;
-                
-                // Start dragging
-                selectNode(id);
-                isDragging = true;
-                const rect = node.getBoundingClientRect();
-                offset.x = e.clientX - rect.left;
-                offset.y = e.clientY - rect.top;
+                if (e.target === node || e.target === label) {
+                    // Start dragging
+                    selectNode(id);
+                    isDragging = true;
+                    const rect = node.getBoundingClientRect();
+                    offset.x = e.clientX - rect.left;
+                    offset.y = e.clientY - rect.top;
+                }
             });
             
-            node.addEventListener('dblclick', () => {
-                openLabelModal(id);
+            node.addEventListener('dblclick', (e) => {
+                if (e.target === node || e.target === label) {
+                    openLabelModal(id);
+                }
+            });
+            
+            // Handle connecting mode clicks
+            node.addEventListener('click', (e) => {
+                if (isConnecting && connectingNode && connectingNode !== id) {
+                    completeConnection(id);
+                }
             });
             
             return node;
+        }
+
+        // Start connecting nodes
+        function startConnecting(nodeId) {
+            // If already connecting, cancel it
+            if (isConnecting) {
+                cancelConnecting();
+            }
+            
+            // Start new connection
+            isConnecting = true;
+            connectingNode = nodeId;
+            
+            // Change cursor to indicate connecting mode
+            document.body.style.cursor = 'crosshair';
+            
+            // Highlight source node
+            const sourceNode = document.getElementById(nodeId);
+            if (sourceNode) {
+                sourceNode.classList.add('selected');
+            }
+        }
+
+        // Cancel connecting mode
+        function cancelConnecting() {
+            isConnecting = false;
+            
+            // Remove source node highlight
+            if (connectingNode) {
+                const sourceNode = document.getElementById(connectingNode);
+                if (sourceNode) {
+                    sourceNode.classList.remove('selected');
+                }
+            }
+            
+            connectingNode = null;
+            document.body.style.cursor = 'default';
+        }
+
+        // Complete connection between nodes
+        function completeConnection(targetNodeId) {
+            if (!connectingNode) return;
+            
+            // Check if connection already exists
+            const connectionExists = connections.some(
+                conn => conn.startId === connectingNode && conn.endId === targetNodeId
+            );
+            
+            if (!connectionExists) {
+                // Create connection elements
+                const line = document.createElement('div');
+                line.className = 'connector-line';
+                
+                const arrow = document.createElement('div');
+                arrow.className = 'connector-arrow';
+                
+                flowchartArea.appendChild(line);
+                flowchartArea.appendChild(arrow);
+                
+                // Add to connections array
+                const connection = {
+                    startId: connectingNode,
+                    endId: targetNodeId,
+                    line: line,
+                    arrow: arrow
+                };
+                
+                connections.push(connection);
+                
+                // Position the connection
+                updateConnectionPosition(connection);
+                
+                // Save state to history
+                saveToHistory();
+            }
+            
+            // Exit connecting mode
+            cancelConnecting();
         }
 
         // Select a node
@@ -603,296 +973,255 @@
             // Update nodes array
             nodes = nodes.filter(node => node.id !== id);
             
-            // Clear selection if the deleted node was selected
+            // Clear selection
+
+
+        // Continuing from where your code was cut off...
+
+            // Clear selection
             if (selectedNode === id) {
                 selectedNode = null;
             }
+            
+            // Save state to history
+            saveToHistory();
         }
 
-        // Open the label modal for a node
+        // Open modal to edit node label
         function openLabelModal(nodeId) {
             activeNodeId = nodeId;
-            const node = nodes.find(n => n.id === nodeId);
             
-            if (node) {
-                nodeLabelInput.value = node.label || '';
-                labelModal.style.display = 'flex';
-                nodeLabelInput.focus();
+            // Get current label
+            const nodeObj = nodes.find(n => n.id === nodeId);
+            if (nodeObj) {
+                nodeLabelInput.value = nodeObj.label || '';
+            } else {
+                nodeLabelInput.value = '';
             }
+            
+            // Show modal
+            labelModal.style.display = 'flex';
+            nodeLabelInput.focus();
         }
 
-        // Save the node label
-        saveLabelBtn.addEventListener('click', () => {
-            if (activeNodeId) {
-                const label = nodeLabelInput.value.trim();
-                const nodeIndex = nodes.findIndex(n => n.id === activeNodeId);
-                
-                if (nodeIndex !== -1) {
-                    nodes[nodeIndex].label = label;
-                    const nodeElement = document.getElementById(activeNodeId);
-                    const labelElement = nodeElement.querySelector('.node-label');
-                    labelElement.textContent = label;
-                }
-                
-                labelModal.style.display = 'none';
-                activeNodeId = null;
-            }
-        });
-
-        // Cancel the label editing
-        cancelLabelBtn.addEventListener('click', () => {
-            labelModal.style.display = 'none';
-            activeNodeId = null;
-        });
-
-        // Close modal if clicking outside
-        window.addEventListener('click', (e) => {
-            if (e.target === labelModal) {
-                labelModal.style.display = 'none';
-                activeNodeId = null;
-            }
-        });
-
-        // Handle keyboard events for modal
-        nodeLabelInput.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') {
-                saveLabelBtn.click();
-            } else if (e.key === 'Escape') {
-                cancelLabelBtn.click();
-            }
-        });
-
-        // Mouse move event for dragging nodes
-        flowchartArea.addEventListener('mousemove', (e) => {
-            const flowchartRect = flowchartArea.getBoundingClientRect();
-            const mouseX = e.clientX - flowchartRect.left;
-            const mouseY = e.clientY - flowchartRect.top;
+        // Save label from modal
+        function saveLabel() {
+            if (!activeNodeId) return;
             
-            if (isDragging && selectedNode) {
-                const node = document.getElementById(selectedNode);
-                const nodeIndex = nodes.findIndex(n => n.id === selectedNode);
+            const label = nodeLabelInput.value.trim();
+            
+            // Update node object
+            const nodeObj = nodes.find(n => n.id === activeNodeId);
+            if (nodeObj) {
+                nodeObj.label = label;
                 
-                if (node && nodeIndex !== -1) {
-                    // Calculate new position
-                    let newX = mouseX - offset.x;
-                    let newY = mouseY - offset.y;
-                    
-                    // Ensure node stays within flowchart area
-                    newX = Math.max(0, Math.min(newX, flowchartRect.width - node.offsetWidth));
-                    newY = Math.max(0, Math.min(newY, flowchartRect.height - node.offsetHeight));
-                    
-                    // Update node position
-                    node.style.left = `${newX}px`;
-                    node.style.top = `${newY}px`;
-                    
-                    // Update node data
-                    nodes[nodeIndex].x = newX;
-                    nodes[nodeIndex].y = newY;
-                    
-                    // Update connections
-                    updateConnections();
-                }
-            }
-        });
-
-        // Mouse up event to end dragging
-        window.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-
-        // Enable node connections with click and drag
-        flowchartArea.addEventListener('mousedown', (e) => {
-            if (e.target.classList.contains('node')) {
-                const nodeId = e.target.id;
-                startNode = nodes.find(n => n.id === nodeId);
-                
-                // Create a temporary connection line
-                if (startNode) {
-                    isConnecting = true;
-                    
-                    const temp = document.createElement('div');
-                    temp.className = 'connector-line';
-                    temp.style.position = 'absolute';
-                    temp.style.left = `${startNode.x + 75}px`;
-                    temp.style.top = `${startNode.y + 40}px`;
-                    temp.style.width = '0px';
-                    temp.style.zIndex = '0';
-                    
-                    const arrow = document.createElement('div');
-                    arrow.className = 'connector-arrow';
-                    arrow.style.position = 'absolute';
-                    arrow.style.left = `${startNode.x + 75}px`;
-                    arrow.style.top = `${startNode.y + 40}px`;
-                    arrow.style.zIndex = '0';
-                    
-                    flowchartArea.appendChild(temp);
-                    flowchartArea.appendChild(arrow);
-                    
-                    currentConnection = {
-                        line: temp,
-                        arrow: arrow
-                    };
-                }
-            }
-        });
-
-        // Update the temporary connection line when moving the mouse
-        flowchartArea.addEventListener('mousemove', (e) => {
-            if (isConnecting && startNode && currentConnection) {
-                const flowchartRect = flowchartArea.getBoundingClientRect();
-                const mouseX = e.clientX - flowchartRect.left;
-                const mouseY = e.clientY - flowchartRect.top;
-                
-                const startX = startNode.x + 75;
-                const startY = startNode.y + 40;
-                
-                // Calculate line length and angle
-                const dx = mouseX - startX;
-                const dy = mouseY - startY;
-                const length = Math.sqrt(dx * dx + dy * dy);
-                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-                
-                // Update line
-                currentConnection.line.style.width = `${length}px`;
-                currentConnection.line.style.transform = `rotate(${angle}deg)`;
-                
-                // Update arrow
-                currentConnection.arrow.style.left = `${startX + length - 10}px`;
-                currentConnection.arrow.style.top = `${startY}px`;
-                currentConnection.arrow.style.transform = `rotate(${angle}deg) translate(0, -50%)`;
-            }
-        });
-
-        // Complete the connection when releasing the mouse button
-        flowchartArea.addEventListener('mouseup', (e) => {
-            if (isConnecting && startNode && currentConnection) {
-                let completed = false;
-                
-                // Check if the mouse is over another node
-                if (e.target.classList.contains('node')) {
-                    const endNodeId = e.target.id;
-                    
-                    // Don't connect to the same node
-                    if (endNodeId !== startNode.id) {
-                        const endNode = nodes.find(n => n.id === endNodeId);
-                        
-                        if (endNode) {
-                            // Create a permanent connection
-                            const connection = {
-                                startId: startNode.id,
-                                endId: endNode.id,
-                                line: currentConnection.line,
-                                arrow: currentConnection.arrow
-                            };
-                            
-                            connections.push(connection);
-                            completed = true;
-                            
-                            // Update the connection position
-                            updateConnectionPosition(connection);
-                        }
+                // Update node element
+                const node = document.getElementById(activeNodeId);
+                if (node) {
+                    const labelElement = node.querySelector('.node-label');
+                    if (labelElement) {
+                        labelElement.textContent = label;
                     }
                 }
                 
-                if (!completed) {
-                    // Remove the temporary connection if not completed
-                    currentConnection.line.remove();
-                    currentConnection.arrow.remove();
-                }
-                
-                // Reset connection state
-                isConnecting = false;
-                startNode = null;
-                currentConnection = null;
+                // Save state to history
+                saveToHistory();
             }
-        });
-
-        // Update all connections
-        function updateConnections() {
-            connections.forEach(updateConnectionPosition);
+            
+            // Close modal
+            closeModal();
         }
 
-        // Update a single connection's position
+        // Close label modal
+        function closeModal() {
+            labelModal.style.display = 'none';
+            activeNodeId = null;
+        }
+
+        // Update connection position based on node positions
         function updateConnectionPosition(connection) {
             const startNode = nodes.find(n => n.id === connection.startId);
             const endNode = nodes.find(n => n.id === connection.endId);
             
-            if (startNode && endNode) {
-                const startX = startNode.x + 75;
-                const startY = startNode.y + 40;
-                const endX = endNode.x + 75;
-                const endY = endNode.y + 40;
-                
-                // Calculate line length and angle
-                const dx = endX - startX;
-                const dy = endY - startY;
-                const length = Math.sqrt(dx * dx + dy * dy);
-                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-                
-                // Update line
-                connection.line.style.left = `${startX}px`;
-                connection.line.style.top = `${startY}px`;
-                connection.line.style.width = `${length}px`;
-                connection.line.style.transform = `rotate(${angle}deg)`;
-                
-                // Update arrow
-                connection.arrow.style.left = `${startX + length - 10}px`;
-                connection.arrow.style.top = `${startY}px`;
-                connection.arrow.style.transform = `rotate(${angle}deg) translate(0, -50%)`;
-            }
+            if (!startNode || !endNode) return;
+            
+            const startElement = document.getElementById(startNode.id);
+            const endElement = document.getElementById(endNode.id);
+            
+            if (!startElement || !endElement) return;
+            
+            const startRect = startElement.getBoundingClientRect();
+            const endRect = endElement.getBoundingClientRect();
+            const flowchartRect = flowchartArea.getBoundingClientRect();
+            
+            // Calculate position relative to flowchart area
+            const startX = startNode.x + 150; // Right side of start node
+            const startY = startNode.y + 40; // Middle of start node
+            const endX = endNode.x; // Left side of end node
+            const endY = endNode.y + 40; // Middle of end node
+            
+            // Calculate line length and angle
+            const dx = endX - startX;
+            const dy = endY - startY;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            
+            // Position line
+            connection.line.style.left = `${startX}px`;
+            connection.line.style.top = `${startY}px`;
+            connection.line.style.width = `${length}px`;
+            connection.line.style.transform = `rotate(${angle}deg)`;
+            
+            // Position arrow
+            connection.arrow.style.left = `${endX - 10}px`;
+            connection.arrow.style.top = `${endY - 6}px`;
+            connection.arrow.style.transform = `rotate(${angle}deg)`;
         }
+
+        // Update all connection positions
+        function updateAllConnections() {
+            connections.forEach(connection => {
+                updateConnectionPosition(connection);
+            });
+        }
+
+        // Mouse move event for dragging
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging && selectedNode) {
+                const node = document.getElementById(selectedNode);
+                if (!node) return;
+                
+                const flowchartRect = flowchartArea.getBoundingClientRect();
+                
+                // Calculate new position
+                let newX = e.clientX - flowchartRect.left - offset.x;
+                let newY = e.clientY - flowchartRect.top - offset.y;
+                
+                // Constrain to flowchart area
+                newX = Math.max(0, Math.min(newX, flowchartRect.width - 150));
+                newY = Math.max(0, Math.min(newY, flowchartRect.height - 80));
+                
+                // Update node position
+                node.style.left = `${newX}px`;
+                node.style.top = `${newY}px`;
+                
+                // Update node object
+                const nodeObj = nodes.find(n => n.id === selectedNode);
+                if (nodeObj) {
+                    nodeObj.x = newX;
+                    nodeObj.y = newY;
+                }
+                
+                // Update connections
+                updateAllConnections();
+            }
+        });
+
+        // Mouse up event to end dragging
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                // Save state to history
+                saveToHistory();
+            }
+        });
+
+        // Background click to cancel connecting
+        flowchartArea.addEventListener('click', (e) => {
+            if (e.target === flowchartArea && isConnecting) {
+                cancelConnecting();
+            }
+        });
 
         // Save flowchart as PNG
         savePngBtn.addEventListener('click', async () => {
-            showLoading('Generating PNG...');
-            
             try {
-                const canvas = await html2canvas(flowchartArea);
-                const imageData = canvas.toDataURL('image/png');
+                showLoading('Creating PNG image...');
                 
+                // Ensure libraries are loaded
+                await loadExternalLibraries();
+                
+                // Use html2canvas to capture the flowchart
+                const canvas = await html2canvas(flowchartArea, {
+                    backgroundColor: "#f5f5f5"
+                });
+                
+                // Convert to data URL and trigger download
+                const dataUrl = canvas.toDataURL('image/png');
                 const link = document.createElement('a');
-                link.href = imageData;
+                link.href = dataUrl;
                 link.download = 'logistics-flowchart.png';
                 link.click();
                 
                 hideLoading();
             } catch (error) {
                 console.error('Error saving PNG:', error);
-                alert('Failed to save PNG. Please try again.');
                 hideLoading();
+                alert('Failed to save as PNG. Please try again.');
             }
         });
 
         // Save flowchart as PDF
         savePdfBtn.addEventListener('click', async () => {
-            showLoading('Generating PDF...');
-            
             try {
-                const canvas = await html2canvas(flowchartArea);
-                const imageData = canvas.toDataURL('image/png');
+                showLoading('Creating PDF document...');
                 
+                // Ensure libraries are loaded
+                await loadExternalLibraries();
+                
+                // Use html2canvas to capture the flowchart
+                const canvas = await html2canvas(flowchartArea, {
+                    backgroundColor: "#f5f5f5"
+                });
+                
+                // Initialize jsPDF
+                const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF({
                     orientation: 'landscape',
                     unit: 'mm'
                 });
                 
-                const imgWidth = 260;
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                // Calculate dimensions
+                const imgData = canvas.toDataURL('image/png');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                const aspectRatio = canvas.width / canvas.height;
+                let imgWidth = pdfWidth - 20; // margins
+                let imgHeight = imgWidth / aspectRatio;
                 
-                pdf.addImage(imageData, 'PNG', 20, 20, imgWidth, imgHeight);
+                // Adjust if image height exceeds page height
+                if (imgHeight > pdfHeight - 20) {
+                    imgHeight = pdfHeight - 20;
+                    imgWidth = imgHeight * aspectRatio;
+                }
+                
+                // Add title
+                pdf.setFontSize(16);
+                pdf.text('Logistics Flowchart', 10, 10);
+                
+                // Add current date
+                const today = new Date();
+                const dateStr = today.toLocaleDateString();
+                pdf.setFontSize(10);
+                pdf.text(`Created: ${dateStr}`, pdfWidth - 50, 10);
+                
+                // Add image
+                pdf.addImage(imgData, 'PNG', 10, 20, imgWidth, imgHeight);
+                
+                // Save PDF
                 pdf.save('logistics-flowchart.pdf');
                 
                 hideLoading();
             } catch (error) {
                 console.error('Error saving PDF:', error);
-                alert('Failed to save PDF. Please try again.');
                 hideLoading();
+                alert('Failed to save as PDF. Please try again.');
             }
         });
 
         // Show loading indicator
-        function showLoading(message = 'Processing...') {
-            loadingText.textContent = message;
+        function showLoading(message) {
+            loadingText.textContent = message || 'Processing...';
             loadingIndicator.style.display = 'block';
         }
 
@@ -901,21 +1230,58 @@
             loadingIndicator.style.display = 'none';
         }
 
-        // html2canvas and jsPDF libraries
-        function loadExternalLibraries() {
-            // Load html2canvas
-            const html2canvasScript = document.createElement('script');
-            html2canvasScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-            document.head.appendChild(html2canvasScript);
-            
-            // Load jsPDF
-            const jsPDFScript = document.createElement('script');
-            jsPDFScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-            document.head.appendChild(jsPDFScript);
-        }
+        // Handle form buttons in modal
+        saveLabelBtn.addEventListener('click', saveLabel);
+        cancelLabelBtn.addEventListener('click', closeModal);
+        
+        // Handle Enter key in the label input
+        nodeLabelInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                saveLabel();
+            }
+        });
 
-        // Load required libraries
-        loadExternalLibraries();
-    </script>
-</body>
-</html>
+        // Handle undo, redo, reset
+        undoBtn.addEventListener('click', undo);
+        redoBtn.addEventListener('click', redo);
+        resetBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear the flowchart? This cannot be undone.')) {
+                reset();
+            }
+        });
+
+        // Initialize history
+        saveToHistory();
+
+        // Handle keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+Z - Undo
+            if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undo();
+            }
+            
+            // Ctrl+Y or Ctrl+Shift+Z - Redo
+            if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) {
+                e.preventDefault();
+                redo();
+            }
+            
+            // Escape key - Cancel connecting or close modal
+            if (e.key === 'Escape') {
+                if (isConnecting) {
+                    cancelConnecting();
+                } else if (labelModal.style.display === 'flex') {
+                    closeModal();
+                }
+            }
+            
+            // Delete key - Delete selected node
+            if (e.key === 'Delete' && selectedNode) {
+                e.preventDefault();
+                deleteNode(selectedNode);
+            }
+        });
+
+        // Inform user that the application is ready
+        console.log('Logistics Flowchart Builder initialized!');
